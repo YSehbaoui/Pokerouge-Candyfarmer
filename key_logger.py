@@ -1,51 +1,11 @@
 import threading
 import time
 from pynput import keyboard
-from pyautogui import press
+from pynput.keyboard import Controller
 from tkinter import messagebox
 
 log_file = "key_log.txt"
 time_log_file = "time_log.txt"
-
-key_mappings = {
-    keyboard.Key.enter: 'enter',
-    keyboard.Key.esc: 'esc',
-    keyboard.Key.shift: 'shiftleft',
-    keyboard.Key.ctrl_l: 'ctrlleft',
-    keyboard.Key.ctrl_r: 'ctrlright',
-    keyboard.Key.alt_l: 'altleft',
-    keyboard.Key.alt_r: 'altright',
-    keyboard.Key.tab: 'tab',
-    keyboard.Key.backspace: 'backspace',
-    keyboard.Key.delete: 'delete',
-    keyboard.Key.home: 'home',
-    keyboard.Key.end: 'end',
-    keyboard.Key.page_down: 'pagedown',
-    keyboard.Key.page_up: 'pageup',
-    keyboard.Key.left: 'left',
-    keyboard.Key.right: 'right',
-    keyboard.Key.up: 'up',
-    keyboard.Key.down: 'down',
-    keyboard.Key.print_screen: 'printscreen',
-    keyboard.Key.pause: 'pause',
-    keyboard.Key.caps_lock: 'capslock',
-    keyboard.Key.num_lock: 'numlock',
-    keyboard.Key.scroll_lock: 'scrolllock',
-    keyboard.Key.insert: 'insert',
-    keyboard.Key.f1: 'f1',
-    keyboard.Key.f2: 'f2',
-    keyboard.Key.f3: 'f3',
-    keyboard.Key.f4: 'f4',
-    keyboard.Key.f5: 'f5',
-    keyboard.Key.f6: 'f6',
-    keyboard.Key.f7: 'f7',
-    keyboard.Key.f8: 'f8',
-    keyboard.Key.f9: 'f9',
-    keyboard.Key.f10: 'f10',
-    keyboard.Key.f11: 'f11',
-    keyboard.Key.f12: 'f12',
-    keyboard.Key.space: 'space'
-}
 
 last_time = None
 stop_program = False
@@ -56,7 +16,9 @@ first_key_logged = False
 record_thread = None
 execute_thread = None
 
-listener = None  # Der Listener wird als globale Variable definiert
+listener = None
+relevant_inputs = ['w', 'a', 's', 'd', 'space', 'x', 'enter', 'f5', 'r', 'f']
+keyboard_controller = Controller()
 
 def on_press(key):
     global last_time, stop_program, first_key_logged
@@ -67,13 +29,12 @@ def on_press(key):
     current_time = time.time() * 1000
 
     try:
-        key_char = key.char
-        if key_char:
-            log = key_char
-        else:
-            log = str(key)
+        log = key.char
     except AttributeError:
-        log = key_mappings.get(key, str(key))
+        log = str(key.name)
+
+    if log not in relevant_inputs: 
+        return
 
     with lock:
         with open(log_file, "a") as f:
@@ -127,10 +88,15 @@ def execute_log_file():
                 time.sleep((int(timestamp) / 1000) + SAFETY_SLEEP)
                 keystroke = keystroke.strip()
                 print(f"Pressed {keystroke} with {timestamp.strip()}ms delay")
-                press(keystroke)
+                
+                if len(keystroke) == 1:
+                    keyboard_controller.press(keystroke)
+                    keyboard_controller.release(keystroke)
+                else:
+                    keyboard_controller.press(eval(f"keyboard.Key.{keystroke}"))
+                    keyboard_controller.release(eval(f"keyboard.Key.{keystroke}"))
 
     print("Execution complete!")
-    # Nicht den aktuellen Thread joinen
     threading.Thread(target=stop_execution).start()
 
 def stop_listener():
