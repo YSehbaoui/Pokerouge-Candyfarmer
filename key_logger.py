@@ -9,7 +9,7 @@ log_file = "key_log.csv"
 
 last_time = None
 stop_program = False
-SAFETY_SLEEP = 0.2
+SAFETY_SLEEP = 0
 lock = threading.Lock()
 first_key_logged = False
 
