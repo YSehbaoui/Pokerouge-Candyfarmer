@@ -50,14 +50,16 @@ key_mappings = {
 
 last_time = None
 stop_program = False
-SAFETY_SLEEP = 0.2
+SAFETY_SLEEP = 0.0
 lock = threading.Lock()
+first_key_logged = False
+relevant_inputs = ['w', 'a', 's', 'd', 'space', 'x', 'enter', 'f5', 'r', 'f']
 
 def on_press(key):
-    global last_time, stop_program
+    global last_time, stop_program, first_key_logged
 
     # Überprüfen, ob ESC gedrückt wurde, um das Programm zu stoppen
-    if key == keyboard.Key.esc:
+    if key == keyboard.Key.delete:
         stop_program = True
         return False
 
@@ -75,6 +77,8 @@ def on_press(key):
         # Wenn es sich um eine spezielle Taste handelt, holen Sie den Namen aus der Zuordnung
         log = key_mappings.get(key, str(key))
 
+    if log not in relevant_inputs: return
+
     with lock:
         # Speichern Sie den Tastenanschlag in der Datei
         with open(log_file, "a") as f:
@@ -82,7 +86,12 @@ def on_press(key):
             print(f"{log} with ", end="")
 
         # Berechnen Sie den zeitlichen Abstand und speichern Sie ihn in der Zeitdatei
-        if last_time is not None:
+        if not first_key_logged:
+            with open(time_log_file, "a") as f:
+                f.write("0\n")
+                print("0ms delay")
+            first_key_logged = True
+        else:
             time_difference = current_time - last_time
             with open(time_log_file, "a") as f:
                 f.write(f"{int(time_difference)}\n")
