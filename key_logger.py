@@ -4,6 +4,7 @@ import csv
 from pynput import keyboard
 from pynput.keyboard import Controller
 from tkinter import messagebox
+import config
 
 log_file = "key_log.csv"
 
@@ -17,7 +18,6 @@ record_thread = None
 execute_thread = None
 
 listener = None
-relevant_inputs = ['w', 'a', 's', 'd', 'space', 'x', 'enter', 'f5', 'r', 'f']
 keyboard_controller = Controller()
 
 def on_press(key):
@@ -33,7 +33,7 @@ def on_press(key):
     except AttributeError:
         log = str(key.name)
 
-    if log not in relevant_inputs: 
+    if log not in config.get_relevant_inputs(): 
         return
 
     with lock:
@@ -63,7 +63,8 @@ def clear_log_file(file_path):
 def record_new_log_file():
     global stop_program, listener_thread
     stop_program = False
-    clear_log_file(log_file)
+    if config.get_clear_on_record():
+        clear_log_file(log_file)
     listener_thread = threading.Thread(target=start_listener)
     listener_thread.start()
     return listener_thread
