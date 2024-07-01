@@ -1,11 +1,11 @@
 import threading
 import time
+import csv
 from pynput import keyboard
 from pynput.keyboard import Controller
 from tkinter import messagebox
 
-log_file = "key_log.txt"
-time_log_file = "time_log.txt"
+log_file = "key_log.csv"
 
 last_time = None
 stop_program = False
@@ -37,20 +37,16 @@ def on_press(key):
         return
 
     with lock:
-        with open(log_file, "a") as f:
-            f.write(log + '\n')
-            print(f"{log} with ", end="")
-
-        if not first_key_logged:
-            with open(time_log_file, "a") as f:
-                f.write("0\n")
-                print("0ms delay")
-            first_key_logged = True
-        else:
-            time_difference = current_time - last_time
-            with open(time_log_file, "a") as f:
-                f.write(f"{int(time_difference)}\n")
-                print(f"{int(time_difference)}ms delay")
+        with open(log_file, "a", newline='') as f:
+            writer = csv.writer(f)
+            if not first_key_logged:
+                writer.writerow([log, 0])
+                print(f"{log} with 0ms delay")
+                first_key_logged = True
+            else:
+                time_difference = current_time - last_time
+                writer.writerow([log, int(time_difference)])
+                print(f"{log} with {int(time_difference)}ms delay")
 
         last_time = current_time
 
@@ -61,14 +57,13 @@ def start_listener():
     listener.join()
 
 def clear_log_file(file_path):
-    with open(file_path, 'w') as file:
+    with open(file_path, 'w', newline='') as file:
         pass
 
 def record_new_log_file():
     global stop_program, listener_thread
     stop_program = False
     clear_log_file(log_file)
-    clear_log_file(time_log_file)
     listener_thread = threading.Thread(target=start_listener)
     listener_thread.start()
     return listener_thread
@@ -80,21 +75,21 @@ def execute_log_file():
     time.sleep(5)
 
     print("Started Execution")
-    with open(log_file, "r") as keystroke_file:
-        with open(time_log_file, "r") as timestamp_file:
-            for timestamp, keystroke in zip(timestamp_file, keystroke_file):
-                if stop_program:
-                    break
-                time.sleep((int(timestamp) / 1000) + SAFETY_SLEEP)
-                keystroke = keystroke.strip()
-                print(f"Pressed {keystroke} with {timestamp.strip()}ms delay")
-                
-                if len(keystroke) == 1:
-                    keyboard_controller.press(keystroke)
-                    keyboard_controller.release(keystroke)
-                else:
-                    keyboard_controller.press(eval(f"keyboard.Key.{keystroke}"))
-                    keyboard_controller.release(eval(f"keyboard.Key.{keystroke}"))
+    with open(log_file, "r") as f:
+        reader = csv.reader(f)
+        for keystroke, timestamp in reader:
+            if stop_program:
+                break
+            time.sleep((int(timestamp) / 1000) + SAFETY_SLEEP)
+            keystroke = keystroke.strip()
+            print(f"Pressed {keystroke} with {timestamp.strip()}ms delay")
+            
+            if len(keystroke) == 1:
+                keyboard_controller.press(keystroke)
+                keyboard_controller.release(keystroke)
+            else:
+                keyboard_controller.press(eval(f"keyboard.Key.{keystroke}"))
+                keyboard_controller.release(eval(f"keyboard.Key.{keystroke}"))
 
     print("Execution complete!")
     threading.Thread(target=stop_execution).start()
